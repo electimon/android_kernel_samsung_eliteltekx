@@ -965,6 +965,15 @@ void sec_debug_update_restart_reason(const char *cmd, const int in_panic)
 		{ "GlobalActions restart",
 			PON_RESTART_REASON_NORMALBOOT,
 			RESTART_REASON_NOT_HANDLE, },
+		{ "adb",
+			PON_RESTART_REASON_NORMALBOOT,
+			RESTART_REASON_NORMAL, NULL },
+		{ "shell",
+			PON_RESTART_REASON_NORMALBOOT,
+			RESTART_REASON_NORMAL, NULL },
+		{ "from_fastboot",
+			PON_RESTART_REASON_NORMALBOOT,
+			RESTART_REASON_NORMAL, NULL },
 	};
 	unsigned long opt_code;
 	unsigned long value;
