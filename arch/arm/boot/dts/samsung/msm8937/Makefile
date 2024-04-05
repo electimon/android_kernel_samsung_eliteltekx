@@ -12,23 +12,17 @@ ifeq ($(CONFIG_SEC_A7MVELTE_PROJECT),y)
         endif
 endif
 
-echo '*** Warning: Samsung $@ Device Tree MSM8937.'
-DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
-ifneq ($(DTB_NAMES),)
-DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
+ifeq ($(CONFIG_ARM),y)
+always          := $(dtb-y)
+subdir-y        := $(dts-dirs)
 else
-DTB_LIST := $(dtb-y)
-endif
-
 targets += dtbs
-targets += $(addprefix ../, $(DTB_LIST))
+targets += $(addprefix ../, $(dtb-y))
 endif
 
 $(obj)/../../%.dtb: $(src)/%.dts FORCE
-	$(call if_changed_dep,dtc)
+        $(call if_changed_dep,dtc)
 
-dtbs: $(addprefix $(obj)/../../,$(DTB_LIST))
-
-clean-files := *.dtb *.reverse.dts
-
-
+dtbs: $(addprefix $(obj)/../../,$(dtb-y))
+endif
+clean-files := *.dtb *.reserve.dts

@@ -9,7 +9,7 @@ export PATH=$(pwd)/arm-eabi-4.8/bin:$PATH
 mkdir ${OUT_DIR}
 
 make ${COMMON_ARGS} msm8937_sec_defconfig VARIANT_DEFCONFIG=msm8937_sec_elitelte_kor_defconfig SELINUX_DEFCONFIG=selinux_defconfig
-make ${COMMON_ARGS}
+make ${COMMON_ARGS} -j48
 
 cp ${OUT_DIR}/arch/arm/boot/zImage $(pwd)/arch/arm/boot/zImage
 

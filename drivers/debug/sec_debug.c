@@ -967,13 +967,13 @@ void sec_debug_update_restart_reason(const char *cmd, const int in_panic)
 			RESTART_REASON_NOT_HANDLE, },
 		{ "adb",
 			PON_RESTART_REASON_NORMALBOOT,
-			RESTART_REASON_NORMAL, NULL },
+			RESTART_REASON_NORMAL },
 		{ "shell",
 			PON_RESTART_REASON_NORMALBOOT,
-			RESTART_REASON_NORMAL, NULL },
+			RESTART_REASON_NORMAL },
 		{ "from_fastboot",
 			PON_RESTART_REASON_NORMALBOOT,
-			RESTART_REASON_NORMAL, NULL },
+			RESTART_REASON_NORMAL },
 	};
 	unsigned long opt_code;
 	unsigned long value;
