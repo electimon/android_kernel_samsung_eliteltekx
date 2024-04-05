@@ -3,7 +3,7 @@
 OUT_DIR=out
 COMMON_ARGS="-j8 -C $(pwd) O=$(pwd)/${OUT_DIR} ARCH=arm CROSS_COMPILE=arm-eabi-"
 
-export PATH=$(pwd)/../PLATFORM/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin:$PATH 
+export PATH=$(pwd)/arm-eabi-4.8/bin:$PATH 
 
 [ -d ${OUT_DIR} ] && rm -rf ${OUT_DIR}
 mkdir ${OUT_DIR}
