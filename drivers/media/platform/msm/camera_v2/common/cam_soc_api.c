@@ -46,8 +46,9 @@ int msm_camera_get_clk_info(struct platform_device *pdev,
 			size_t *num_clk)
 {
 	int rc = 0;
+	int i = 0;
 	size_t cnt, tmp;
-	uint32_t *rates, i = 0;
+	uint32_t *rates;
 	const char *clk_ctl = NULL;
 	bool clock_cntl_support = false;
 	struct device_node *of_node;
@@ -165,7 +166,7 @@ int msm_camera_get_clk_info(struct platform_device *pdev,
 			rc = PTR_ERR((*clk_ptr)[i]);
 			goto err4;
 		}
-		CDBG("clk ptr[%d] :%p\n", i, (*clk_ptr)[i]);
+		CDBG("clk ptr[%d] :%pK\n", i, (*clk_ptr)[i]);
 	}
 
 	devm_kfree(&pdev->dev, rates);
@@ -194,7 +195,7 @@ int msm_camera_get_clk_info_and_rates(
 			size_t *num_clk)
 {
 	int rc = 0, tmp_var, cnt, tmp;
-	uint32_t i = 0, j = 0;
+	int i = 0, j = 0;
 	struct device_node *of_node;
 	uint32_t **rates;
 	struct clk **clks;
@@ -289,7 +290,7 @@ int msm_camera_get_clk_info_and_rates(
 			rc = PTR_ERR(clks[i]);
 			goto err5;
 		}
-		CDBG("clk ptr[%d] :%p\n", i, clks[i]);
+		CDBG("clk ptr[%d] :%pK\n", i, clks[i]);
 	}
 	*pclk_info = clk_info;
 	*pclks = clks;
@@ -405,7 +406,7 @@ long msm_camera_clk_set_rate(struct device *dev,
 	if (!dev || !clk || (clk_rate < 0))
 		return -EINVAL;
 
-	CDBG("clk : %p, enable : %ld\n", clk, clk_rate);
+	CDBG("clk : %pK, enable : %ld\n", clk, clk_rate);
 
 	if (clk_rate > 0) {
 		rate = clk_round_rate(clk, clk_rate);
@@ -436,7 +437,7 @@ int msm_camera_put_clk_info(struct platform_device *pdev,
 		if (clk_ptr[i] != NULL)
 			devm_clk_put(&pdev->dev, (*clk_ptr)[i]);
 
-		CDBG("clk ptr[%d] :%p\n", i, (*clk_ptr)[i]);
+		CDBG("clk ptr[%d] :%pK\n", i, (*clk_ptr)[i]);
 	}
 	devm_kfree(&pdev->dev, *clk_info);
 	devm_kfree(&pdev->dev, *clk_ptr);
@@ -460,7 +461,7 @@ int msm_camera_put_clk_info_and_rates(struct platform_device *pdev,
 	for (i = cnt - 1; i >= 0; i--) {
 		if (clk_ptr[i] != NULL)
 			devm_clk_put(&pdev->dev, (*clk_ptr)[i]);
-		CDBG("clk ptr[%d] :%p\n", i, (*clk_ptr)[i]);
+		CDBG("clk ptr[%d] :%pK\n", i, (*clk_ptr)[i]);
 	}
 	devm_kfree(&pdev->dev, *clk_info);
 	devm_kfree(&pdev->dev, *clk_ptr);
@@ -529,7 +530,7 @@ int msm_camera_get_regulator_info(struct platform_device *pdev,
 			pr_err("Regulator phandle not found :%s\n", name);
 			goto err1;
 		}
-		CDBG("vdd ptr[%d] :%p\n", i, (*vdd)[i]);
+		CDBG("vdd ptr[%d] :%pK\n", i, (*vdd)[i]);
 	}
 
 	return 0;
@@ -595,7 +596,7 @@ void msm_camera_put_regulators(struct platform_device *pdev,
 	for (i = cnt - 1; i >= 0; i--) {
 		if (!IS_ERR_OR_NULL((*vdd)[i]))
 			devm_regulator_put((*vdd)[i]);
-			CDBG("vdd ptr[%d] :%p\n", i, (*vdd)[i]);
+			CDBG("vdd ptr[%d] :%pK\n", i, (*vdd)[i]);
 	}
 
 	devm_kfree(&pdev->dev, *vdd);
@@ -634,7 +635,7 @@ int msm_camera_register_irq(struct platform_device *pdev,
 		rc = -EINVAL;
 	}
 
-	CDBG("Registered irq for %s[resource - %p]\n", irq_name, irq);
+	CDBG("Registered irq for %s[resource - %pK]\n", irq_name, irq);
 
 	return rc;
 }
@@ -660,7 +661,7 @@ int msm_camera_register_threaded_irq(struct platform_device *pdev,
 		rc = -EINVAL;
 	}
 
-	CDBG("Registered irq for %s[resource - %p]\n", irq_name, irq);
+	CDBG("Registered irq for %s[resource - %pK]\n", irq_name, irq);
 
 	return rc;
 }
@@ -692,7 +693,7 @@ int msm_camera_unregister_irq(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	CDBG("Un Registering irq for [resource - %p]\n", irq);
+	CDBG("Un Registering irq for [resource - %pK]\n", irq);
 	devm_free_irq(&pdev->dev, irq->start, dev_id);
 
 	return 0;
@@ -719,7 +720,7 @@ void __iomem *msm_camera_get_reg_base(struct platform_device *pdev,
 	}
 
 	if (reserve_mem) {
-		CDBG("device:%p, mem : %p, size : %d\n",
+		CDBG("device:%pK, mem : %pK, size : %d\n",
 			&pdev->dev, mem, (int)resource_size(mem));
 		if (!devm_request_mem_region(&pdev->dev, mem->start,
 			resource_size(mem),
@@ -738,7 +739,7 @@ void __iomem *msm_camera_get_reg_base(struct platform_device *pdev,
 		return NULL;
 	}
 
-	CDBG("base : %p\n", base);
+	CDBG("base : %pK\n", base);
 	return base;
 }
 EXPORT_SYMBOL(msm_camera_get_reg_base);
@@ -782,7 +783,7 @@ int msm_camera_put_reg_base(struct platform_device *pdev,
 		pr_err("err: mem resource %s not found\n", device_name);
 		return -EINVAL;
 	}
-	CDBG("mem : %p, size : %d\n", mem, (int)resource_size(mem));
+	CDBG("mem : %pK, size : %d\n", mem, (int)resource_size(mem));
 
 	devm_iounmap(&pdev->dev, base);
 	if (reserve_mem)

@@ -153,7 +153,7 @@ struct dentry *msm_vidc_debugfs_init_drv(void)
 	struct dentry *f = debugfs_create_##__type(__name, S_IRUGO | S_IWUSR, \
 		dir, __value);                                                \
 	if (IS_ERR_OR_NULL(f)) {                                              \
-		dprintk(VIDC_ERR, "Failed creating debugfs file '%pd/%s'\n",  \
+		dprintk(VIDC_ERR, "Failed creating debugfs file '%pKd/%s'\n",  \
 			dir, __name);                                         \
 		f = NULL;                                                     \
 	}                                                                     \
@@ -267,12 +267,10 @@ static ssize_t inst_info_read(struct file *file, char __user *buf,
 {
 	struct msm_vidc_inst *inst = file->private_data;
 	int i, j;
-
 	if (!inst) {
-		dprintk(VIDC_ERR, "Invalid params, core: %p\n", inst);
+		dprintk(VIDC_ERR, "Invalid params, core: %pK\n", inst);
 		return 0;
 	}
-
 	INIT_DBG_BUF(dbg_buf);
 	write_str(&dbg_buf, "===============================\n");
 	write_str(&dbg_buf, "INSTANCE: %pK (%s)\n", inst,
@@ -348,7 +346,7 @@ struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
 		dprintk(VIDC_ERR, "Invalid params, inst: %pK\n", inst);
 		goto failed_create_dir;
 	}
-	snprintf(debugfs_name, MAX_DEBUGFS_NAME, "inst_%p", inst);
+	snprintf(debugfs_name, MAX_DEBUGFS_NAME, "inst_%pK", inst);
 	dir = debugfs_create_dir(debugfs_name, parent);
 	if (!dir) {
 		dprintk(VIDC_ERR, "Failed to create debugfs for msm_vidc\n");

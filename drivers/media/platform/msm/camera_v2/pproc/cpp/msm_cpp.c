@@ -25,6 +25,7 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 #include <linux/workqueue.h>
+#include <media/msm_isp.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/msmb_camera.h>
@@ -1036,13 +1037,13 @@ static int cpp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	CPP_DBG("E\n");
 
 	if (!sd || !fh) {
-		pr_err("Wrong input parameters sd %p fh %p!",
+		pr_err("Wrong input parameters sd %pK fh %pK!",
 			sd, fh);
 		return -EINVAL;
 	}
 	cpp_dev = v4l2_get_subdevdata(sd);
 	if (!cpp_dev) {
-		pr_err("failed: cpp_dev %p\n", cpp_dev);
+		pr_err("failed: cpp_dev %pK\n", cpp_dev);
 		return -EINVAL;
 	}
 	mutex_lock(&cpp_dev->mutex);
@@ -1065,7 +1066,7 @@ static int cpp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 		return -ENODEV;
 	}
 
-	CPP_DBG("open %d %p\n", i, &fh->vfh);
+	CPP_DBG("open %d %pK\n", i, &fh->vfh);
 	cpp_dev->cpp_open_cnt++;
 	if (cpp_dev->cpp_open_cnt == 1) {
 		rc = cpp_init_hardware(cpp_dev);
@@ -1107,7 +1108,7 @@ static int cpp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	cpp_dev =  v4l2_get_subdevdata(sd);
 
 	if (!cpp_dev) {
-		pr_err("failed: cpp_dev %p\n", cpp_dev);
+		pr_err("failed: cpp_dev %pK\n", cpp_dev);
 		return -EINVAL;
 	}
 
@@ -1247,6 +1248,11 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.stream_id = (iden & 0xFFFF);
 			buff_mgr_info.frame_id = processed_frame->frame_id;
 			buff_mgr_info.timestamp = processed_frame->timestamp;
+			/*
+			 * Update the reserved field (cds information) to buffer
+			 * manager structure so it is propogated back to HAL
+			 */
+			buff_mgr_info.reserved = processed_frame->reserved;
 			if (processed_frame->batch_info.batch_mode ==
 				BATCH_MODE_VIDEO ||
 				(IS_BATCH_BUFFER_ON_PREVIEW(
@@ -1293,6 +1299,11 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.timestamp = processed_frame->timestamp;
 			buff_mgr_info.index =
 				processed_frame->duplicate_buffer_info.index;
+			/*
+			 * Update the reserved field (cds information) to buffer
+			 * manager structure so it is propogated back to HAL
+			 */
+			buff_mgr_info.reserved = processed_frame->reserved;
 			if (put_buf) {
 				rc = msm_cpp_buffer_ops(cpp_dev,
 					VIDIOC_MSM_BUF_MNGR_PUT_BUF,
@@ -1392,7 +1403,7 @@ static void msm_cpp_do_timeout_work(struct work_struct *work)
 	mutex_lock(&cpp_dev->mutex);
 
 	if (!work || (cpp_timer.data.cpp_dev->state != CPP_STATE_ACTIVE)) {
-		pr_err("Invalid work:%p or state:%d\n", work,
+		pr_err("Invalid work:%pK or state:%d\n", work,
 			cpp_timer.data.cpp_dev->state);
 		/* Do not flush queue here as it is not a fatal error */
 		goto end;
@@ -1771,6 +1782,8 @@ static int msm_cpp_check_buf_type(struct msm_buf_mngr_info *buff_mgr_info,
 			/* More or equal bufs as Input buffer */
 			num_output_bufs = new_frame->batch_info.batch_size;
 		}
+		if (num_output_bufs > MSM_OUTPUT_BUF_CNT)
+			return 0;
 		for (i = 0; i < num_output_bufs; i++) {
 			new_frame->output_buffer_info[i].index =
 				buff_mgr_info->user_buf.buf_idx[i];
@@ -2454,7 +2467,7 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 {
 	int ret;
 	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
-		pr_err("%s: Wrong ioctl_ptr %p / len %zu\n", __func__,
+		pr_err("%s: Wrong ioctl_ptr %pK / len %zu\n", __func__,
 			ioctl_ptr, ioctl_ptr->len);
 		return -EINVAL;
 	}
@@ -2477,7 +2490,7 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 {
 	int ret;
 	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
-		pr_err("%s: Wrong ioctl_ptr %p / len %zu\n", __func__,
+		pr_err("%s: Wrong ioctl_ptr %pK / len %zu\n", __func__,
 			ioctl_ptr, ioctl_ptr->len);
 		return -EINVAL;
 	}
@@ -2556,7 +2569,7 @@ static int msm_cpp_validate_input(unsigned int cmd, void *arg,
 		*ioctl_ptr = arg;
 		if ((*ioctl_ptr == NULL) ||
 			(*ioctl_ptr)->ioctl_ptr == NULL) {
-			pr_err("Error invalid ioctl argument cmd %u", cmd);
+			pr_err("Error invalid ioctl argument cmd %u\n", cmd);
 			return -EINVAL;
 		}
 		break;
@@ -2573,7 +2586,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	int rc = 0;
 
 	if (sd == NULL) {
-		pr_err("sd %p\n", sd);
+		pr_err("sd %pK\n", sd);
 		return -EINVAL;
 	}
 	cpp_dev = v4l2_get_subdevdata(sd);
@@ -2581,12 +2594,10 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		pr_err("cpp_dev is null\n");
 		return -EINVAL;
 	}
-
 	if (_IOC_DIR(cmd) == _IOC_NONE) {
 		pr_err("Invalid ioctl/subdev cmd %u", cmd);
 		return -EINVAL;
 	}
-
 	rc = msm_cpp_validate_input(cmd, arg, &ioctl_ptr);
 	if (rc != 0) {
 		pr_err("input validation failed\n");
@@ -2655,7 +2666,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				&cpp_dev->pdev->dev);
 			if (rc) {
 				dev_err(&cpp_dev->pdev->dev,
-					"Fail to loc blob %s dev %p, rc:%d\n",
+					"Fail to loc blob %s dev %pK, rc:%d\n",
 					cpp_dev->fw_name_bin,
 					&cpp_dev->pdev->dev, rc);
 				kfree(cpp_dev->fw_name_bin);
@@ -2822,7 +2833,8 @@ STREAM_BUFF_END:
 		uint32_t identity;
 		struct msm_cpp_buff_queue_info_t *buff_queue_info;
 		CPP_DBG("VIDIOC_MSM_CPP_DEQUEUE_STREAM_BUFF_INFO\n");
-		if (ioctl_ptr->len != sizeof(uint32_t)) {
+		if ((ioctl_ptr->len == 0) ||
+		    (ioctl_ptr->len > sizeof(uint32_t))) {
 			mutex_unlock(&cpp_dev->mutex);
 			return -EINVAL;
 		}
@@ -3117,14 +3129,14 @@ static long msm_cpp_subdev_do_ioctl(
 	struct v4l2_fh *vfh = NULL;
 
 	if ((arg == NULL) || (file == NULL)) {
-		pr_err("Invalid input parameters arg %p, file %p\n", arg, file);
+		pr_err("Invalid input parameters arg %pK, file %pK\n", arg, file);
 		return -EINVAL;
 	}
 	vdev = video_devdata(file);
 	sd = vdev_to_v4l2_subdev(vdev);
 
 	if (sd == NULL) {
-		pr_err("Invalid input parameter sd %p\n", sd);
+		pr_err("Invalid input parameter sd %pK\n", sd);
 		return -EINVAL;
 	}
 	vfh = file->private_data;
@@ -3257,6 +3269,7 @@ static struct msm_cpp_frame_info_t *get_64bit_cpp_frame_from_compat(
 	new_frame->we_disable = new_frame32->we_disable;
 	new_frame->duplicate_identity = new_frame32->duplicate_identity;
 	new_frame->feature_mask = new_frame32->feature_mask;
+	new_frame->reserved = new_frame32->reserved;
 	new_frame->partial_frame_indicator =
 		new_frame32->partial_frame_indicator;
 	new_frame->first_payload = new_frame32->first_payload;
@@ -3356,6 +3369,7 @@ static void get_compat_frame_from_64bit(struct msm_cpp_frame_info_t *frame,
 	k32_frame->we_disable = frame->we_disable;
 	k32_frame->duplicate_identity = frame->duplicate_identity;
 	k32_frame->feature_mask = frame->feature_mask;
+	k32_frame->reserved = frame->reserved;
 	k32_frame->cookie = ptr_to_compat(frame->cookie);
 	k32_frame->partial_frame_indicator = frame->partial_frame_indicator;
 	k32_frame->first_payload = frame->first_payload;
@@ -3398,7 +3412,7 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 	}
 	cpp_dev = v4l2_get_subdevdata(sd);
 	if (!vdev || !cpp_dev) {
-		pr_err("Invalid vdev %p or cpp_dev %p structures!",
+		pr_err("Invalid vdev %pK or cpp_dev %pK structures!",
 			vdev, cpp_dev);
 		return -EINVAL;
 	}
@@ -3655,6 +3669,13 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 			&u32_queue_buf->buff_mgr_info.timestamp.tv_sec);
 		get_user(k_queue_buf.buff_mgr_info.timestamp.tv_usec,
 			&u32_queue_buf->buff_mgr_info.timestamp.tv_usec);
+
+		/*
+		 * Update the reserved field (cds information) to buffer
+		 * manager structure so that it is propogated back to HAL
+		 */
+		get_user(k_queue_buf.buff_mgr_info.reserved,
+			&u32_queue_buf->buff_mgr_info.reserved);
 
 		kp_ioctl.ioctl_ptr = (void *)&k_queue_buf;
 		kp_ioctl.len = sizeof(struct msm_pproc_queue_buf_info);

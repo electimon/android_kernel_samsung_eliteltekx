@@ -1292,7 +1292,7 @@ static int msm_ispif_set_vfe_info(struct ispif_device *ispif,
 {
 	if (!vfe_info || (vfe_info->num_vfe == 0) ||
 		(vfe_info->num_vfe > ispif->hw_num_isps)) {
-		pr_err("Invalid VFE info: %p %d\n", vfe_info,
+		pr_err("Invalid VFE info: %pK %d\n", vfe_info,
 			   (vfe_info ? vfe_info->num_vfe : 0));
 		return -EINVAL;
 	}
@@ -1327,7 +1327,7 @@ static int msm_ispif_init(struct ispif_device *ispif,
 
 	if (ispif->csid_version >= CSID_VERSION_V30) {
 		if (!ispif->clk_mux_mem || !ispif->clk_mux_io) {
-			pr_err("%s csi clk mux mem %p io %p\n", __func__,
+			pr_err("%s csi clk mux mem %pK io %pK\n", __func__,
 				ispif->clk_mux_mem, ispif->clk_mux_io);
 			rc = -ENOMEM;
 			return rc;
@@ -1519,7 +1519,7 @@ static long msm_ispif_subdev_fops_ioctl(struct file *file, unsigned int cmd,
 static int ispif_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct ispif_device *ispif = v4l2_get_subdevdata(sd);
-	int rc = 0;
+	int rc;
 
 	mutex_lock(&ispif->mutex);
 	if (0 == ispif->open_cnt) {
@@ -1607,14 +1607,20 @@ static int ispif_probe(struct platform_device *pdev)
 	}
 
 	rc = msm_ispif_get_regulator_info(ispif, pdev);
-	if (rc < 0)
+
+	if (rc < 0) {
+		pr_err("%s: msm_ispif_get_regulator_info() failed", __func__);
+		kfree(ispif);
 		return -EFAULT;
+	}
 
 	rc = msm_ispif_get_clk_info(ispif, pdev,
 		ispif_ahb_clk_info, ispif_clk_info);
 	if (rc < 0) {
 		pr_err("%s: msm_isp_get_clk_info() failed", __func__);
-			return -EFAULT;
+		msm_ispif_put_regulator(ispif);
+		kfree(ispif);
+		return -EFAULT;
 	}
 	mutex_init(&ispif->mutex);
 	ispif->mem = platform_get_resource_byname(pdev,

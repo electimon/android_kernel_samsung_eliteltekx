@@ -50,7 +50,7 @@ int msm_jpeg_platform_set_clk_rate(struct msm_jpeg_device *pgmn_dev,
 		long clk_rate)
 {
 	int rc = 0;
-	uint32_t msm_jpeg_idx;
+	int msm_jpeg_idx;
 
 	/* retrieve clock index from list of clocks */
 	msm_jpeg_idx = msm_jpeg_get_clock_index(pgmn_dev,
@@ -210,7 +210,7 @@ static int32_t msm_jpeg_set_init_dt_parms(struct msm_jpeg_device *pgmn_dev,
 			return -EINVAL;
 		}
 		for (i = 0; i < dt_count; i = i + 2) {
-			JPEG_DBG("%s:%d] %p %08x\n",
+			JPEG_DBG("%s:%d] %pK %08x\n",
 					__func__, __LINE__,
 					base + dt_reg_settings[i],
 					dt_reg_settings[i + 1]);

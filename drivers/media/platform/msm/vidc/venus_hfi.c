@@ -106,9 +106,9 @@ static int __tzbsp_set_video_state(enum tzbsp_video_state state);
 static inline void __strict_check(struct venus_hfi_device *device)
 {
 	if (!mutex_is_locked(&device->lock)) {
-		dprintk(VIDC_WARN,
-			"device->lock mutex is not locked\n");
-		WARN_ON(VIDC_DBG_WARN_ENABLE);
+			dprintk(VIDC_WARN,
+					"device->lock mutex is not locked\n");
+			WARN_ON(VIDC_DBG_WARN_ENABLE);
 	}
 }
 
@@ -3501,9 +3501,9 @@ static int __response_handler(struct venus_hfi_device *device)
 			struct hal_session *session = NULL;
 
 			if (upper_32_bits((uintptr_t)*session_id) != 0) {
-				dprintk(VIDC_WARN,
-					"Upper 32 bits of session_id != 0\n");
-				WARN_ON(VIDC_DBG_WARN_ENABLE);
+					dprintk(VIDC_WARN,
+							"Upper 32 bits of session_id != 0\n");
+					WARN_ON(VIDC_DBG_WARN_ENABLE);
 			}
 			session = __get_session(device,
 					(u32)(uintptr_t)*session_id);

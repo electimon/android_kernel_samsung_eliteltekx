@@ -151,9 +151,9 @@ static void rmnet_map_send_ack(struct sk_buff *skb,
 	if (xmit_status != NETDEV_TX_OK) {
 		rc = dev_queue_xmit(skb);
 		if (rc != 0) {
-			LOGD("Failed to queue packet for transmission on [%s]",
-			     skb->dev->name);
+			 LOGD("Failed to queue ACK packet for transmission");
 		}
+		rmnet_stats_queue_xmit(rc, RMNET_STATS_QUEUE_XMIT_EGRESS);
 	}
 
 }

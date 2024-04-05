@@ -37,6 +37,7 @@
 #define VFE40_8952_VERSION 0x10060000
 #define VFE40_8976_VERSION 0x10050000
 #define VFE40_8937_VERSION 0x10080000
+#define VFE40_8917_VERSION 0x10080001
 #define VFE40_8953_VERSION 0x10090000
 #define VFE32_8909_VERSION 0x30600
 
@@ -62,6 +63,7 @@
 #define MAX_BUFFERS_IN_HW 2
 
 #define MAX_VFE 2
+#define MAX_RECOVERY_THRESHOLD  5
 
 struct vfe_device;
 struct msm_vfe_axi_stream;
@@ -154,6 +156,7 @@ struct msm_vfe_irq_ops {
 		uint32_t irq_status0, uint32_t irq_status1,
 		uint32_t pingpong_status,
 		struct msm_isp_timestamp *ts);
+	void (*enable_camif_err)(struct vfe_device *vfe_dev, int enable);
 };
 
 struct msm_vfe_axi_ops {
@@ -232,11 +235,13 @@ struct msm_vfe_core_ops {
 	void (*get_overflow_mask)(uint32_t *overflow_mask);
 	void (*get_irq_mask)(struct vfe_device *vfe_dev,
 		uint32_t *irq0_mask, uint32_t *irq1_mask);
+	void (*restore_irq_mask)(struct vfe_device *vfe_dev);
 	void (*get_halt_restart_mask)(uint32_t *irq0_mask,
 		uint32_t *irq1_mask);
 	void (*get_rdi_wm_mask)(struct vfe_device *vfe_dev,
 		uint32_t *rdi_wm_mask);
 	bool (*is_module_cfg_lock_needed)(uint32_t reg_offset);
+	void (*set_halt_restart_mask)(struct vfe_device *vfe_dev);
 };
 struct msm_vfe_stats_ops {
 	int (*get_stats_idx)(enum msm_isp_stats_type stats_type);
@@ -461,6 +466,7 @@ struct msm_vfe_axi_shared_data {
 	uint32_t event_mask;
 	uint8_t enable_frameid_recovery;
 	enum msm_vfe_camif_state camif_state;
+	uint32_t recovery_count;
 };
 
 struct msm_vfe_stats_hardware_info {
@@ -525,6 +531,8 @@ enum msm_vfe_overflow_state {
 
 struct msm_vfe_error_info {
 	atomic_t overflow_state;
+	uint32_t overflow_recover_irq_mask0;
+	uint32_t overflow_recover_irq_mask1;
 	uint32_t error_mask0;
 	uint32_t error_mask1;
 	uint32_t violation_status;
@@ -703,6 +711,7 @@ struct vfe_device {
 	int vfe_clk_idx;
 	uint32_t vfe_open_cnt;
 	uint8_t vt_enable;
+	uint8_t ignore_error;
 	uint32_t vfe_ub_policy;
 	uint8_t reset_pending;
 	uint8_t reg_update_requested;
@@ -725,8 +734,16 @@ struct vfe_device {
 	uint8_t is_camif_raw_crop_supported;
 
 	/* irq info */
-	uint32_t irq0_mask;
-	uint32_t irq1_mask;
+	uint32_t ignore_irq;
+	
+	/* last received irq */  
+	uint32_t irq_status0; 
+	uint32_t irq_status1; 
+	uint32_t ping_pong_status; 
+	
+	/* before halt irq info */ 
+	uint32_t at_halt_irq0_mask; 
+	uint32_t at_halt_irq1_mask;
 };
 
 struct vfe_parent_device {

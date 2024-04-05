@@ -91,6 +91,9 @@ static DEFINE_CLK_VOTER(pnoc_usb_clk, &pnoc_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(snoc_usb_clk, &snoc_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(bimc_usb_clk, &bimc_clk.c, LONG_MAX);
 
+static DEFINE_CLK_VOTER(snoc_wcnss_a_clk, &snoc_a_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(bimc_wcnss_a_clk, &bimc_a_clk.c, LONG_MAX);
+
 /* Branch Voter clocks */
 static DEFINE_CLK_BRANCH_VOTER(xo_gcc, &xo_clk_src.c);
 static DEFINE_CLK_BRANCH_VOTER(xo_otg_clk, &xo_clk_src.c);
@@ -3740,6 +3743,9 @@ static struct clk_lookup msm_clocks_lookup_common[] = {
 	CLK_LIST(snoc_usb_clk),
 	CLK_LIST(bimc_usb_clk),
 
+	CLK_LIST(snoc_wcnss_a_clk),
+	CLK_LIST(bimc_wcnss_a_clk),
+
 	CLK_LIST(qdss_clk),
 	CLK_LIST(qdss_a_clk),
 
@@ -4326,10 +4332,6 @@ static int msm_gcc_probe(struct platform_device *pdev)
 	} else if (compat_bin2) {
 		gpll0_clk_src.c.parent = &gpll0_clk_src_8937.c;
 		gpll0_ao_clk_src.c.parent = &gpll0_ao_clk_src_8937.c;
-		vdd_dig.num_levels = VDD_DIG_NUM_8917;
-		vdd_dig.cur_level = VDD_DIG_NUM_8917;
-		vdd_hf_pll.num_levels = VDD_HF_PLL_NUM_8917;
-		vdd_hf_pll.cur_level = VDD_HF_PLL_NUM_8917;
 		override_for_8917();
 	} else {
 		gpll0_clk_src.c.parent = &gpll0_clk_src_8952.c;

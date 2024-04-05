@@ -33,6 +33,7 @@ enum msm_spdm_rt_res {
 
 static LIST_HEAD(devfreqs);
 static DEFINE_MUTEX(devfreqs_lock);
+static int g_irq;
 
 static int enable_clocks(void)
 {
@@ -84,6 +85,10 @@ static irqreturn_t threaded_isr(int irq, void *dev_id)
 			(int)desc.arg[0], ext_status);
 	mutex_lock(&devfreqs_lock);
 	list_for_each_entry(data, &devfreqs, list) {
+		if (data == NULL || data->devfreq == NULL) {
+			pr_info("Spurious interrupts before configuration\n");
+			break;
+		} 		
 		if (data->spdm_client == desc.ret[0]) {
 			devfreq_monitor_suspend(data->devfreq);
 			mutex_lock(&data->devfreq->lock);
@@ -300,6 +305,7 @@ static int gov_spdm_hyp_eh(struct devfreq *devfreq, unsigned int event,
 			return -EINVAL;
 		}
 		spdm_data->enabled = true;
+		enable_irq(g_irq);
 		devfreq_monitor_start(devfreq);
 		break;
 
@@ -366,6 +372,8 @@ static int probe(struct platform_device *pdev)
 	if (ret)
 		goto no_irq;
 
+	g_irq = *irq;
+	disable_irq(*irq);
 	enable_clocks();
 	return 0;
 

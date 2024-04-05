@@ -669,7 +669,7 @@ int32_t msm_fd_hw_set_dt_parms_by_name(struct msm_fd_device *fd,
 				dt_reg_settings[i + MSM_FD_REG_ADDR_OFFSET_IDX],
 				dt_reg_settings[i + MSM_FD_REG_VALUE_IDX] &
 				dt_reg_settings[i + MSM_FD_REG_MASK_IDX]);
-			pr_debug("%s:%d] %p %08x\n", __func__, __LINE__,
+			pr_debug("%s:%d] %pK %08x\n", __func__, __LINE__,
 				fd->iomem_base[base_idx] +
 				dt_reg_settings[i + MSM_FD_REG_ADDR_OFFSET_IDX],
 				dt_reg_settings[i + MSM_FD_REG_VALUE_IDX] &
@@ -923,12 +923,13 @@ void msm_fd_hw_put(struct msm_fd_device *fd)
  */
 static int msm_fd_hw_attach_iommu(struct msm_fd_device *fd)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
 	mutex_lock(&fd->lock);
 
 	if (fd->iommu_attached_cnt == UINT_MAX) {
 		dev_err(fd->dev, "Max count reached! can not attach iommu\n");
+		ret = -1;
 		goto error;
 	}
 

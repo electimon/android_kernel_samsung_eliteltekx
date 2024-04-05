@@ -394,6 +394,8 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen)
 	while (!idle_cpu(cpu))
 		cpu_relax();
 
+	save_pcpu_tick(cpu);
+
 	hotplug_cpu__broadcast_tick_pull(cpu);
 	/* This actually kills the CPU. */
 	__cpu_die(cpu);
@@ -482,6 +484,8 @@ static int _cpu_up(unsigned int cpu, int tasks_frozen)
 		ret = PTR_ERR(idle);
 		goto out;
 	}
+	
+	restore_pcpu_tick(cpu);
 
 	ret = smpboot_create_threads(cpu);
 	if (ret)

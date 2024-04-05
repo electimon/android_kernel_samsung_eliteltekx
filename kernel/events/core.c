@@ -1621,32 +1621,6 @@ static int __perf_remove_from_context(void *info)
 	return 0;
 }
 
-
-#ifdef CONFIG_SMP
-static void perf_retry_remove(struct perf_event *event,
-			      struct remove_event *rep)
-{
-	int up_ret;
-	/*
-	 * CPU was offline. Bring it online so we can
-	 * gracefully exit a perf context.
-	 */
-	up_ret = cpu_up(event->cpu);
-	if (!up_ret)
-		/* Try the remove call once again. */
-		cpu_function_call(event->cpu, __perf_remove_from_context,
-				  rep);
-	else
-		pr_err("Failed to bring up CPU: %d, ret: %d\n",
-		       event->cpu, up_ret);
-}
-#else
-static void perf_retry_remove(struct perf_event *event,
-			      struct remove_event *rep)
-{
-}
-#endif
-
  /*
  * Remove the event from a task's (or a CPU's) list of events.
  *
@@ -1682,9 +1656,6 @@ static void __ref perf_remove_from_context(struct perf_event *event,
 		 */
 		ret = cpu_function_call(event->cpu, __perf_remove_from_context,
 					&re);
-		if (ret == -ENXIO)
-			perf_retry_remove(event, &re);
-
 		return;
 	}
 
@@ -6329,7 +6300,6 @@ static struct pmu perf_swevent = {
 	.start		= perf_swevent_start,
 	.stop		= perf_swevent_stop,
 	.read		= perf_swevent_read,
-	.events_across_hotplug = 1,
 };
 
 #ifdef CONFIG_EVENT_TRACING
@@ -6447,7 +6417,6 @@ static struct pmu perf_tracepoint = {
 	.start		= perf_swevent_start,
 	.stop		= perf_swevent_stop,
 	.read		= perf_swevent_read,
-	.events_across_hotplug = 1,
 };
 
 static inline void perf_tp_register(void)
@@ -6673,7 +6642,6 @@ static struct pmu perf_cpu_clock = {
 	.start		= cpu_clock_event_start,
 	.stop		= cpu_clock_event_stop,
 	.read		= cpu_clock_event_read,
-	.events_across_hotplug = 1,
 };
 
 /*
@@ -6752,7 +6720,6 @@ static struct pmu perf_task_clock = {
 	.start		= task_clock_event_start,
 	.stop		= task_clock_event_stop,
 	.read		= task_clock_event_read,
-	.events_across_hotplug = 1,
 };
 
 static void perf_pmu_nop_void(struct pmu *pmu)
@@ -6990,7 +6957,6 @@ skip_type:
 		__perf_event_init_context(&cpuctx->ctx);
 		lockdep_set_class(&cpuctx->ctx.mutex, &cpuctx_mutex);
 		lockdep_set_class(&cpuctx->ctx.lock, &cpuctx_lock);
-		cpuctx->ctx.type = cpu_context;
 		cpuctx->ctx.pmu = pmu;
 
 		__perf_cpu_hrtimer_init(cpuctx, cpu);
@@ -7183,7 +7149,6 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 	if (!group_leader)
 		group_leader = event;
 
-	mutex_init(&event->group_leader_mutex);
 	mutex_init(&event->child_mutex);
 	INIT_LIST_HEAD(&event->child_list);
 
@@ -7548,16 +7513,6 @@ SYSCALL_DEFINE5(perf_event_open,
 			group_leader = NULL;
 	}
 
-	/*
-	 * Take the group_leader's group_leader_mutex before observing
-	 * anything in the group leader that leads to changes in ctx,
-	 * many of which may be changing on another thread.
-	 * In particular, we want to take this lock before deciding
-	 * whether we need to move_group.
-	 */
-	if (group_leader)
-		mutex_lock(&group_leader->group_leader_mutex);
-
 	if (pid != -1 && !(flags & PERF_FLAG_PID_CGROUP)) {
 		task = find_lively_task_by_vpid(pid);
 		if (IS_ERR(task)) {
@@ -7658,7 +7613,19 @@ SYSCALL_DEFINE5(perf_event_open,
 		 * task or CPU context:
 		 */
 		if (move_group) {
-			if (group_leader->ctx->type != ctx->type)
+			/*
+			 * Make sure we're both on the same task, or both
+			 * per-cpu events.
+			 */
+			if (group_leader->ctx->task != ctx->task)
+				goto err_context;
+
+			/*
+			 * Make sure we're both events for the same CPU;
+			 * grouping events for different CPUs is broken; since
+			 * you can never concurrently schedule them anyhow.
+			 */
+			if (group_leader->cpu != event->cpu)
 				goto err_context;
 		} else {
 			if (group_leader->ctx != ctx)
@@ -7693,7 +7660,6 @@ SYSCALL_DEFINE5(perf_event_open,
 		 * of swizzling perf_event::ctx.
 		 */
 		mutex_lock_double(&gctx->mutex, &ctx->mutex);
-
 		perf_remove_from_context(group_leader, false);
 
 		/*
@@ -7738,8 +7704,6 @@ SYSCALL_DEFINE5(perf_event_open,
 		put_ctx(gctx);
 	}
 	mutex_unlock(&ctx->mutex);
-	if (group_leader)
-		mutex_unlock(&group_leader->group_leader_mutex);
 
 	put_online_cpus();
 
@@ -7776,8 +7740,6 @@ err_task:
 	if (task)
 		put_task_struct(task);
 err_group_fd:
-	if (group_leader)
-		mutex_unlock(&group_leader->group_leader_mutex);
 	fdput(group);
 err_fd:
 	put_unused_fd(event_fd);

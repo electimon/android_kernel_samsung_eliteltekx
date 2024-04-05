@@ -246,6 +246,16 @@ static struct notifier_block wnb = {
 	.notifier_call = wcnss_notif_cb,
 };
 
+extern unsigned int system_rev;
+
+
+#if defined(CONFIG_SEC_C7LTE_CHN) || defined(CONFIG_SEC_C7LTE_CHN_HK)
+#define ISC7000 1
+#else
+#define ISC7000 0
+#endif
+
+#define NVBIN_FILE_WA "wlan/prima/WCNSS_qcom_wlan_nv_wa.bin"
 #define NVBIN_FILE "wlan/prima/WCNSS_qcom_wlan_nv.bin"
 
 /* On SMD channel 4K of maximum data can be transferred, including message
@@ -422,6 +432,8 @@ static struct {
 	int pc_disabled;
 	struct delayed_work wcnss_pm_qos_del_req;
 	struct mutex pm_qos_mutex;
+	struct clk *snoc_wcnss;
+	unsigned int snoc_wcnss_clock_freq;
 } *penv = NULL;
 
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
@@ -2340,12 +2352,22 @@ static void wcnss_nvbin_dnld(void)
 
 	down_read(&wcnss_pm_sem);
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
-
-	if (ret || !nv || !nv->data || !nv->size) {
-		pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
-			__func__, NVBIN_FILE, ret);
-		goto out;
+	if (ISC7000 == 1 && system_rev <= 3) {
+		ret = request_firmware(&nv, NVBIN_FILE_WA, dev);
+		
+		if (ret || !nv || !nv->data || !nv->size) {
+			pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
+				__func__, NVBIN_FILE_WA, ret);
+			goto out;
+		}
+	}else {
+		ret = request_firmware(&nv, NVBIN_FILE, dev);
+		
+		if (ret || !nv || !nv->data || !nv->size) {
+			pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
+				__func__, NVBIN_FILE, ret);
+			goto out;
+		}
 	}
 
 	/* First 4 bytes in nv blob is validity bitmap.
@@ -3124,6 +3146,21 @@ wcnss_trigger_config(struct platform_device *pdev)
 		penv->fw_vbatt_state = WCNSS_CONFIG_UNSPECIFIED;
 	}
 
+	penv->snoc_wcnss = devm_clk_get(&penv->pdev->dev, "snoc_wcnss");
+	if (IS_ERR(penv->snoc_wcnss)) {
+		pr_err("%s: couldn't get snoc_wcnss\n", __func__);
+		penv->snoc_wcnss = NULL;
+	} else {
+		if (of_property_read_u32(pdev->dev.of_node,
+					 "qcom,snoc-wcnss-clock-freq",
+					 &penv->snoc_wcnss_clock_freq)) {
+			pr_debug("%s: wcnss snoc clock frequency is not defined\n",
+				 __func__);
+			devm_clk_put(&penv->pdev->dev, penv->snoc_wcnss);
+			penv->snoc_wcnss = NULL;
+		}
+	}
+
 	if (penv->wlan_config.is_pronto_vadc) {
 		penv->vadc_dev = qpnp_get_vadc(&penv->pdev->dev, "wcnss");
 
@@ -3186,6 +3223,38 @@ fail:
 	return ret;
 }
 
+/* Driver requires to directly vote the snoc clocks
+ * To enable and disable snoc clock, it call
+ * wcnss_snoc_vote function
+ */
+void wcnss_snoc_vote(bool clk_chk_en)
+{
+	int rc;
+
+	if (penv->snoc_wcnss == NULL) {
+		pr_err("%s: couldn't get clk snoc_wcnss\n", __func__);
+		return;
+	}
+
+	if (clk_chk_en) {
+		rc = clk_set_rate(penv->snoc_wcnss,
+				  penv->snoc_wcnss_clock_freq);
+		if (rc) {
+			pr_err("%s: snoc_wcnss_clk-clk_set_rate failed =%d\n",
+			       __func__, rc);
+			return;
+		}
+
+		if (clk_prepare_enable(penv->snoc_wcnss)) {
+			pr_err("%s: snoc_wcnss clk enable failed\n", __func__);
+			return;
+		}
+	} else {
+		clk_disable_unprepare(penv->snoc_wcnss);
+	}
+}
+EXPORT_SYMBOL(wcnss_snoc_vote);
+
 /* wlan prop driver cannot invoke cancel_work_sync
  * function directly, so to invoke this function it
  * call wcnss_flush_work function
@@ -3246,6 +3315,9 @@ static int wcnss_node_open(struct inode *inode, struct file *file)
 {
 	struct platform_device *pdev;
 	int rc = 0;
+
+
+
 
 	if (!penv)
 		return -EFAULT;
@@ -3339,7 +3411,7 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 		return -EFAULT;
 
 	if ((UINT32_MAX - count < penv->user_cal_rcvd) ||
-		(penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
+	     (penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
 		pr_err(DEVICE " invalid size to write %zu\n", count +
 				penv->user_cal_rcvd);
 		rc = -ENOMEM;

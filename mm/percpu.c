@@ -163,7 +163,6 @@ static DEFINE_SPINLOCK(pcpu_lock);	/* all internal data structures */
 static DEFINE_MUTEX(pcpu_alloc_mutex);	/* chunk create/destroy, [de]pop, map ext */
 
 static struct list_head *pcpu_slot __read_mostly; /* chunk list slots */
-
 /* chunks which need their map areas extended, protected by pcpu_lock */
 static LIST_HEAD(pcpu_map_extend_chunks);
 
@@ -413,6 +412,7 @@ static int pcpu_need_to_extend(struct pcpu_chunk *chunk, bool is_atomic)
 				pcpu_schedule_balance_work();
 			}
 		}
+
 	} else {
 		margin = PCPU_ATOMIC_MAP_MARGIN_HIGH;
 	}

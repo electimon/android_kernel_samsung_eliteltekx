@@ -863,8 +863,7 @@ static int stm_probe(struct platform_device *pdev)
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata)
 		return -ENOMEM;
-	/* Store the driver data pointer for use in exported functions */
-	stmdrvdata = drvdata;
+
 	drvdata->dev = &pdev->dev;
 	platform_set_drvdata(pdev, drvdata);
 
@@ -949,6 +948,9 @@ static int stm_probe(struct platform_device *pdev)
 
 	if (boot_enable)
 		coresight_enable(drvdata->csdev);
+
+	/* Store the driver data pointer for use in exported functions */
+	stmdrvdata = drvdata;
 
 	return 0;
 err:

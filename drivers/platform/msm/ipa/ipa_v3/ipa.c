@@ -768,7 +768,7 @@ static long ipa3_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		if (ipa3_del_hdr_by_user((struct ipa_ioc_del_hdr *)param,
-			true)) {
+			true)) {	
 			retval = -EFAULT;
 			break;
 		}
@@ -3889,7 +3889,7 @@ static int ipa3_trigger_fw_loading_mdms(void)
 
 	IPADBG("FWs are available for loading\n");
 
-	result = ipa3_load_fws(fw);
+	result = ipa3_load_fws(fw, ipa3_res.transport_mem_base) ;
 	if (result) {
 		IPAERR("IPA FWs loading has failed\n");
 		release_firmware(fw);

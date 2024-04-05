@@ -964,6 +964,7 @@ struct spcom_client *spcom_register_client(struct spcom_client_info *info)
 	ch = spcom_find_channel_by_name(name);
 	if (!ch) {
 		pr_err("channel %s doesn't exist, load App first.\n", name);
+		kfree(client);
 		return NULL;
 	}
 
@@ -1113,6 +1114,7 @@ struct spcom_server *spcom_register_service(struct spcom_service_info *info)
 	ch = spcom_find_channel_by_name(name);
 	if (!ch) {
 		pr_err("channel %s doesn't exist, load App first.\n", name);
+		kfree(server);
 		return NULL;
 	}
 
@@ -1316,7 +1318,7 @@ static int spcom_handle_send_command(struct spcom_channel *ch,
 	 */
 	if (size < sizeof(*cmd)) {
 		pr_err("ch [%s] invalid cmd buf.\n",
-			ch->name);
+				ch->name);
 		return -EINVAL;
 	}
 
@@ -1334,12 +1336,12 @@ static int spcom_handle_send_command(struct spcom_channel *ch,
 	/* Check param validity */
 	if (buf_size > SPCOM_MAX_RESPONSE_SIZE) {
 		pr_err("ch [%s] invalid buf size [%d].\n",
-			ch->name, buf_size);
+				ch->name, buf_size);
 		return -EINVAL;
 	}
 	if (size != sizeof(*cmd) + buf_size) {
 		pr_err("ch [%s] invalid cmd size [%d].\n",
-			ch->name, size);
+				ch->name, size);
 		return -EINVAL;
 	}
 
@@ -1565,7 +1567,7 @@ static int spcom_handle_lock_ion_buf_command(struct spcom_channel *ch,
 
 	if (size != sizeof(*cmd)) {
 		pr_err("cmd size [%d] , expected [%d].\n",
-		       (int) size,  (int) sizeof(*cmd));
+					(int)size, (int) sizeof(*cmd));
 		return -EINVAL;
 	}
 
@@ -1618,7 +1620,7 @@ static int spcom_handle_unlock_ion_buf_command(struct spcom_channel *ch,
 
 	if (size != sizeof(*cmd)) {
 		pr_err("cmd size [%d] , expected [%d].\n",
-		       (int) size,  (int) sizeof(*cmd));
+					(int)size, (int) sizeof(*cmd));
 		return -EINVAL;
 	}
 
@@ -2042,6 +2044,11 @@ static ssize_t spcom_device_write(struct file *filp,
 		return -EFAULT;
 	}
 
+	if (!ch) {
+		kfree(buf);
+		return -EFAULT;
+	}
+
 	ret = spcom_handle_write(ch, buf, size);
 	if (ret) {
 		pr_err("handle command error [%d].\n", ret);
@@ -2086,6 +2093,11 @@ static ssize_t spcom_device_read(struct file *filp, char __user *user_buff,
 		return -ENOMEM;
 
 	actual_size = spcom_handle_read(ch, buf, size);
+	if ((actual_size <= 0) || (actual_size > size)) {
+		pr_err("invalid actual_size [%d].\n", actual_size);
+		kfree(buf);
+		return -EFAULT;
+	}
 
 	ret = copy_to_user(user_buff, buf, actual_size);
 

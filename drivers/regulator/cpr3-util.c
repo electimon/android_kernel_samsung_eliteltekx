@@ -1258,7 +1258,7 @@ void cpr3_print_quots(struct cpr3_regulator *vreg)
 		for (j = 0, pos = 0; j < CPR3_RO_COUNT; j++)
 			pos += scnprintf(buf + pos, buflen - pos, " %u",
 				vreg->corner[i].target_quot[j]);
-		cpr3_debug(vreg, "target quots[%2d]:%s\n", i, buf);
+		cpr3_info(vreg, "target quots[%2d]:%s\n", i, buf);
 	}
 
 	kfree(buf);

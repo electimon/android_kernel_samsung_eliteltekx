@@ -826,14 +826,14 @@ static void ipa_rx_switch_to_intr_mode(struct ipa_sys_context *sys)
 		goto fail;
 	}
 
-	if (!atomic_read(&sys->curr_polling_state) &&
+	if (!atomic_read(&sys->curr_polling_state) && 
 		((sys->ep->connect.options & SPS_O_EOT) == SPS_O_EOT)) {
 		IPADBG("already in intr mode\n");
 		return;
 	}
 
 	if (!atomic_read(&sys->curr_polling_state)) {
-		IPAERR("already in intr mode\n");
+		IPAERR("Not in poll mode, and IRQ not enabled.\n");
 		goto fail;
 	}
 

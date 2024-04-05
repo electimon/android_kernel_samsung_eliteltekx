@@ -465,7 +465,7 @@ static int __configure_pipe_params(struct msm_fb_data_type *mfd,
 	mixer = mdss_mdp_mixer_get(mdp5_data->ctl, mixer_mux);
 	pipe->src_fmt = mdss_mdp_get_format_params(layer->buffer.format);
 	if (!pipe->src_fmt || !mixer) {
-		pr_err("invalid layer format:%d or mixer:%p\n",
+		pr_err("invalid layer format:%d or mixer:%pK\n",
 				layer->buffer.format, pipe->mixer_left);
 		ret = -EINVAL;
 		goto end;
@@ -498,7 +498,6 @@ static int __configure_pipe_params(struct msm_fb_data_type *mfd,
 	if (layer->flags & MDP_LAYER_PP)
 		pipe->flags |= MDP_OVERLAY_PP_CFG_EN;
 
-	pipe->scaler.enable = (layer->flags & SCALER_ENABLED);
 	pipe->is_fg = layer->flags & MDP_LAYER_FORGROUND;
 	pipe->img_width = layer->buffer.width & 0x3fff;
 	pipe->img_height = layer->buffer.height & 0x3fff;
@@ -529,6 +528,12 @@ static int __configure_pipe_params(struct msm_fb_data_type *mfd,
 	pr_debug("src{%d,%d,%d,%d}, dst{%d,%d,%d,%d}\n",
 		pipe->src.x, pipe->src.y, pipe->src.w, pipe->src.h,
 		pipe->dst.x, pipe->dst.y, pipe->dst.w, pipe->dst.h);
+
+	if (layer->flags & SCALER_ENABLED)
+		memcpy(&pipe->scaler, layer->scale,
+			sizeof(struct mdp_scale_data_v2));
+
+	pipe->scaler.enable = (layer->flags & SCALER_ENABLED);
 
 	flags = pipe->flags;
 	if (is_single_layer)
@@ -649,9 +654,6 @@ static int __configure_pipe_params(struct msm_fb_data_type *mfd,
 		}
 	}
 
-	if (layer->flags & SCALER_ENABLED)
-		memcpy(&pipe->scaler, layer->scale,
-			sizeof(struct mdp_scale_data_v2));
 	ret = mdss_mdp_overlay_setup_scaling(pipe);
 	if (ret) {
 		pr_err("scaling setup failed %d\n", ret);
@@ -1428,7 +1430,7 @@ validate_exit:
 			}
 		} else {
 			pipe->file = file;
-			pr_debug("file pointer attached with pipe is %p\n",
+			pr_debug("file pointer attached with pipe is %pK\n",
 				file);
 		}
 	}

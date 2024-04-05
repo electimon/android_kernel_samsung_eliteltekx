@@ -681,7 +681,6 @@ static long msm_private_ioctl(struct file *file, void *fh,
 	unsigned long spin_flags = 0;
 	struct msm_sd_subdev *msm_sd;
 
-	memset(&event, 0, sizeof(struct v4l2_event));
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
 
@@ -1244,7 +1243,7 @@ static int msm_probe(struct platform_device *pdev)
 		pr_warn("NON-FATAL: failed to create logsync base directory\n");
 	} else {
 		if (!debugfs_create_file(MSM_CAM_LOGSYNC_FILE_NAME,
-					 0666,
+					 0660,
 					 cam_debugfs_root,
 					 NULL,
 					 &logsync_fops))
